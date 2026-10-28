@@ -1,0 +1,86 @@
+services:
+  nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./.htpasswd:/etc/nginx/.htpasswd:ro   # optional basic auth
+    depends_on:
+      - invidious
+
+  invidious:
+    image: quay.io/invidious/invidious:latest
+    restart: unless-stopped
+    # no public port: only nginx can reach it
+    expose:
+      - "3000"
+    environment:
+      INVIDIOUS_CONFIG: |
+        db:
+          dbname: invidious
+          user: kemal
+          password: 0c19723a2665de18893f07eda8c81921
+          host: invidious-db
+          port: 5432
+        check_tables: true
+
+        domain: minetube.ddns.net
+        https_only: true
+        external_port: 443
+
+        # Random 20+ char strings
+        hmac_key: "Random20$charstringnek"
+
+        # Must be exactly 16 chars and match SERVER_SECRET_KEY below
+        invidious_companion:
+          - private_url: "http://companion:8282/companion"
+        invidious_companion_key: "34dfb81921f9df66"
+
+        # Set true only while creating your own account, then false
+        registration_enabled: false
+        login_enabled: true
+        captcha_enabled: false
+
+        default_user_preferences:
+          local: true            # proxy video through your server (works over cellular)
+          quality: small         # 240p single-file stream, no DASH needed
+          autoplay: true
+          continue: true
+          continue_autoplay: true
+          related_videos: true
+          dark_mode: "true"
+          player_style: invidious
+    depends_on:
+      - invidious-db
+      - companion
+
+  companion:
+    image: quay.io/invidious/invidious-companion:latest
+    restart: unless-stopped
+    environment:
+      - SERVER_SECRET_KEY=34dfb81921f9df66
+    volumes:
+      - companioncache:/var/tmp/youtubei.js:rw
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  invidious-db:
+    image: docker.io/library/postgres:14
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: invidious
+      POSTGRES_USER: kemal
+      POSTGRES_PASSWORD: 0c19723a2665de18893f07eda8c81921
+    volumes:
+      - postgresdata:/var/lib/postgresql/data
+
+volumes:
+  postgresdata:
+  companioncache:
