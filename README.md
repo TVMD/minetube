@@ -34,6 +34,14 @@ Only nginx publishes ports (80, 443). Invidious, companion and the database are 
 - **Autoplay:** reliable inside a playlist or mix, weaker (related-video drift) on a bare video.
 - **Quality:** default is `small` (240p single-file stream), chosen for low bandwidth and no DASH requirement.
 
+### TV quality while keeping the car default
+
+Keep `quality: small` in `docker-compose.yml` for the car. On the TV, open [Preferences](https://minetube.ddns.net/preferences), set **Preferred video quality** to **DASH** and **Preferred DASH video quality** to **Best**, then save. No Docker restart is needed.
+
+Logged-in preferences are saved to the account and shared across devices. Use separate car and TV accounts, or stay logged out on the TV to save its preferences only in that browser's cookies.
+
+For a single-video test, append `&quality=dash&quality_dash=best` to an existing watch URL. `Best` selects the highest available quality; use `Auto` if playback buffers. Actual resolution depends on the video, TV browser support, and bandwidth. See the [Invidious quality parameters](https://docs.invidious.io/url-parameters/).
+
 ## Files
 
 ```
