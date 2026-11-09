@@ -85,7 +85,7 @@ else:
 protected = ("/", "/search?q=test", "/watch?v=test", "/embed/test", "/videoplayback?id=test",
              "/api/v1/search?q=test", "/api/v1/videos/test", "/api/manifest/dash/id/test",
              "/api/manifest/hls_playlist/id/test", "/companion/latest_version?id=test", "/latest_version?id=test",
-             "/vi/test/default.jpg", "/feed/popular", "/hh3d-session", "/session", "/verify",
+             "/vi/test/default.jpg", "/feed/popular", "/feed/history", "/hh3d-session", "/session", "/verify",
              "/css/../search?q=test", "/%73earch?q=test", "/login/search?q=test")
 for cookie in ("", "SID=forged", "SID=expired", "__Host-hh3d_gate=old"):
     for path in protected:
@@ -106,6 +106,7 @@ print("PASS login page, assets, form body and SID cookie work without nginx cred
 
 for path in protected:
     check(200, path, headers={"Cookie": "SID=valid"})
+assert json.loads(check(200, "/", headers={"Cookie": "SID=valid"})[2])[1] == "/feed/history"
 for method in ("HEAD", "POST"):
     check(200, "/watch?v=test", method=method, headers={"Cookie": "SID=valid"}, body="payload")
 _, _, body = check(200, "/videoplayback?id=test", headers={"Cookie": "SID=valid", "Range": "bytes=0-1", "Authorization": "Basic ignored"})

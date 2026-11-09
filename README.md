@@ -29,9 +29,9 @@ Only nginx publishes ports (80, 443). Invidious, companion and the database are 
 
 ### Behavior to expect
 - **Search:** same results an anonymous YouTube visitor gets.
-- **Home feed:** no personalization. Use Trending, or subscribe to channels and use the Subscriptions feed.
+- **Default page:** your watch history, from the signed-in Invidious account.
 - **Mix / radio:** a video-seeded mix (`list=RD<videoId>`) works. Account-based "My Mix" does not.
-- **Autoplay:** reliable inside a playlist or mix, weaker (related-video drift) on a bare video.
+- **Autoplay:** video autoplay and auto-next are enabled by default. Auto-next is reliable inside a playlist or mix, weaker (related-video drift) on a bare video.
 - **Quality:** default is `small` (240p single-file stream), chosen for low bandwidth and no DASH requirement.
 
 ### TV quality while keeping the car default
