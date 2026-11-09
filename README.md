@@ -38,7 +38,7 @@ Only nginx publishes ports (80, 443). Invidious, companion and the database are 
 
 Keep `quality: small` in `docker-compose.yml` for the car. On the TV, open [Preferences](https://minetube.ddns.net/preferences), set **Preferred video quality** to **DASH** and **Preferred DASH video quality** to **Best**, then save. No Docker restart is needed.
 
-Logged-in preferences are saved to the account and shared across devices. Use separate car and TV accounts, or stay logged out on the TV to save its preferences only in that browser's cookies.
+Logged-in preferences are saved to the account and shared across devices. Use separate car and TV accounts, and log in on each device before searching or playing videos.
 
 For a single-video test, append `&quality=dash&quality_dash=best` to an existing watch URL. `Best` selects the highest available quality; use `Auto` if playback buffers. Actual resolution depends on the video, TV browser support, and bandwidth. See the [Invidious quality parameters](https://docs.invidious.io/url-parameters/).
 
@@ -110,12 +110,35 @@ Wait until Invidious reports it is listening and the database tables are created
 2. In `docker-compose.yml` set `registration_enabled: false`.
 3. Apply it: `docker compose up -d`.
 
-### 6. Optional: basic auth in front
+### 6. Require an Invidious login
+
+Nginx redirects signed-out visitors to `/login`. Only the login page and its static assets are public. Search, watch pages, embeds, feeds, APIs, thumbnails, manifests, and video streams require a valid Invidious session. Nginx verifies the `SID` with Invidious's [authenticated preferences endpoint](https://docs.invidious.io/api/authenticated-endpoints/); a forged cookie, old TV gate cookie, Basic credentials, or Bearer header cannot unlock the site. Session checks are not cached, so signing out revokes access on subsequent requests. An unavailable session verifier fails closed.
+
+There is one login: your Invidious account. The nginx password prompt, `.htpasswd` mount, `gate` service, and `/hh3d-session` bootstrap have been removed. TV apps should open `/login` and retain the Invidious `SID` in their WebView cookie store. Old TV apps that require the bootstrap must be updated.
+
+Apply the configuration to an existing installation:
+
 ```bash
-sudo apt install apache2-utils     # or: brew install httpd
-htpasswd -c .htpasswd yourname
+docker compose config --quiet
+docker compose run --rm --no-deps nginx nginx -t
+docker compose up -d --no-deps --force-recreate nginx
 ```
-Uncomment the `.htpasswd` volume in compose and the two `auth_basic` lines in `nginx.conf`, then `docker compose up -d`.
+
+Remove the obsolete gate container after nginx is running:
+
+```bash
+docker rm -f minetube-gate-1
+```
+
+No database or account migration is required. Keep existing volumes; do not run `docker compose down -v`. The unused gate volume and local `.htpasswd` can be removed separately once the new login flow is verified.
+
+The HTTPS regression check uses synthetic sessions and disposable containers without connecting to YouTube or changing the running installation:
+
+```bash
+python3 -B tests/check_nginx.py
+```
+
+It covers anonymous/forged/revoked sessions, legacy credentials, login form/cookie forwarding, static assets, protected APIs/media, HEAD/POST/Range requests, and verifier failures. Also test a real account and playback on each target device after deployment.
 
 ### 7. Auto-renew with cron
 Let's Encrypt certificates last 90 days. Run `renew` daily. It is a no-op until the certificate is within 30 days of expiry, so running it often is safe.
@@ -157,8 +180,8 @@ Test in this order so failures are easy to localize.
    ```bash
    curl -I https://yt.example.com
    ```
-   Expect `200`. If you see a certificate error, recheck the cert paths.
-3. **Home LAN browser:** open the site, search for a video, press play. Confirm no ads and that 240p plays.
+   Expect `302` to `/login` while signed out; `/login` should return `200` without a browser password prompt. If you see a certificate error, recheck the cert paths.
+3. **Home LAN browser:** confirm signed-out search/watch URLs redirect to login, then log in with your Invidious account, search for a video, and press play. Confirm no ads and that 240p plays.
 4. **Mix test:** open any video, then load `https://yt.example.com/watch?v=VIDEO_ID&list=RDVIDEO_ID` using the same ID twice. It should advance through the mix. Try two or three seeds.
 5. **Subscriptions:** subscribe to a channel and open the Subscriptions feed.
 6. **Outside network:** turn off Wi-Fi on your phone and open the site over cellular. Playback working here confirms video proxying and port forwarding.
@@ -191,7 +214,7 @@ Certificates are renewed by the cron job from step 7. Run `sudo ./certs.sh statu
 ## Security notes
 
 - Do not leave registration open. Strangers will use your bandwidth, and your home IP can get flagged by YouTube.
-- Consider basic auth or Cloudflare Access in front.
+- Keep the nginx session check enabled: Invidious allows anonymous search/playback when accessed directly.
 - Only nginx is exposed. Do not publish ports 3000, 8282, or 5432.
 - Back up the `postgresdata` volume if you care about subscriptions and history.
 

@@ -8,7 +8,6 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ./.htpasswd:/etc/nginx/.htpasswd:ro   # optional basic auth
     depends_on:
       - invidious
 
@@ -59,7 +58,11 @@ services:
       - companion
 
   companion:
-    image: quay.io/invidious/invidious-companion:latest
+    image: minetube/invidious-companion:range-fix-6926f22
+    build:
+      context: https://github.com/ldpreload/invidious-companion.git#6926f22bbf52196c4ec0b0ece5fceae92ba58367
+      args:
+        BUILDKIT_CONTEXT_KEEP_GIT_DIR: "1"
     restart: unless-stopped
     environment:
       - SERVER_SECRET_KEY=34dfb81921f9df66
